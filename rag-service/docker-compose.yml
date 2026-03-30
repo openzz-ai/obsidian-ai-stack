@@ -1,0 +1,49 @@
+services:
+  rag-service:
+    image: python:3.11-slim
+    container_name: rag-service
+    restart: unless-stopped
+    ports:
+      - "8900:8900"
+    volumes:
+      - ./app.py:/app/app.py:ro
+      - ./requirements.txt:/app/requirements.txt:ro
+      - ${VAULT_PATH:-/mnt/user/appdata/vault-mirror}:/data/vault:ro
+      - rag-chromadb:/data/chromadb
+      - rag-data:/data
+    working_dir: /app
+    environment:
+      # ── Required ────────────────────────────────────────────────────────────
+      VAULT_PATH: /data/vault
+      CHROMADB_PATH: /data/chromadb
+      AUDIT_LOG_PATH: /data/audit.log
+
+      # ── Ollama connection ────────────────────────────────────────────────────
+      # Use host.docker.internal to reach Ollama on the host machine
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-qwen2.5:7b-instruct-q4_K_M}
+
+      # ── Security ─────────────────────────────────────────────────────────────
+      # Set KB_API_KEY to require X-API-Key header on all requests
+      # Leave empty to disable authentication (not recommended for public networks)
+      KB_API_KEY: ${KB_API_KEY:-}
+
+      # ── Optional: exclude directories from indexing ──────────────────────────
+      # Comma-separated folder names to skip (already skips .obsidian .claude .backups)
+      SKIP_DIRS_EXTRA: ${SKIP_DIRS_EXTRA:-}
+
+    command: >
+      sh -c "pip install -r requirements.txt -q &&
+             uvicorn app:app --host 0.0.0.0 --port 8900"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8900/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  rag-chromadb:
+  rag-data:

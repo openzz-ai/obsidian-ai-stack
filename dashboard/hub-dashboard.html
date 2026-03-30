@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0B1120;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 15% 60%, rgba(16,185,129,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 85% 20%, rgba(59,130,246,0.04) 0%, transparent 60%);
+    min-height: 100vh;
+    color: #F1F5F9;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Cards */
+  .card {
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid rgba(51, 65, 85, 0.55);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .card:hover { border-color: rgba(16,185,129,0.18); box-shadow: 0 0 28px rgba(16,185,129,0.06); }
+
+  /* Metric card gradient cap on hover */
+  .metric-card { position: relative; overflow: hidden; }
+  .metric-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .metric-card:hover::after { opacity: 1; }
+  .cap-green::after  { background: linear-gradient(to right, transparent, #10B981 40%, transparent); }
+  .cap-amber::after  { background: linear-gradient(to right, transparent, #F59E0B 40%, transparent); }
+  .cap-red::after    { background: linear-gradient(to right, transparent, #EF4444 40%, transparent); }
+
+  /* Status dots */
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-green { background: #10B981; box-shadow: 0 0 6px 2px rgba(16,185,129,0.45); animation: pg 2.2s ease-in-out infinite; }
+  .dot-amber { background: #F59E0B; box-shadow: 0 0 6px 2px rgba(245,158,11,0.35); }
+  .dot-red   { background: #EF4444; box-shadow: 0 0 6px 2px rgba(239,68,68,0.35); }
+  @keyframes pg { 0%,100% { box-shadow: 0 0 6px 2px rgba(16,185,129,.4); } 50% { box-shadow: 0 0 10px 4px rgba(16,185,129,.6); } }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+  .badge-g { background: rgba(16,185,129,.12); color: #10B981; border: 1px solid rgba(16,185,129,.22); }
+  .badge-a { background: rgba(245,158,11,.12); color: #F59E0B; border: 1px solid rgba(245,158,11,.22); }
+  .badge-r { background: rgba(239,68,68,.12); color: #EF4444; border: 1px solid rgba(239,68,68,.22); }
+  .badge-b { background: rgba(59,130,246,.12); color: #60A5FA; border: 1px solid rgba(59,130,246,.22); }
+
+  /* Latency bar */
+  .lat-track { height: 3px; background: rgba(51,65,85,.5); border-radius: 9999px; overflow: hidden; }
+  .lat-fill   { height: 100%; border-radius: 9999px; transition: width .9s cubic-bezier(.4,0,.2,1); }
+
+  /* Command bar */
+  .cmd-bar { background: rgba(11,17,32,.9); border: 1px solid rgba(51,65,85,.75); border-radius: 12px; transition: border-color .2s, box-shadow .2s; }
+  .cmd-bar:focus-within { border-color: rgba(16,185,129,.4); box-shadow: 0 0 0 3px rgba(16,185,129,.07), 0 0 20px rgba(16,185,129,.08); }
+
+  /* Tag chips */
+  .chip { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 500; background: rgba(51,65,85,.4); border: 1px solid rgba(51,65,85,.7); color: #94A3B8; cursor: pointer; transition: all .15s; }
+  .chip:hover { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.3); color: #10B981; }
+
+  /* Timeline */
+  .tl-item { position: relative; padding-left: 22px; padding-bottom: 14px; }
+  .tl-item::before { content: ''; position: absolute; left: 6px; top: 18px; bottom: 0; width: 1px; background: linear-gradient(to bottom, rgba(59,130,246,.35), rgba(59,130,246,.04)); }
+  .tl-item:last-child::before { display: none; }
+
+  /* Table */
+  .tbl-row { transition: background .15s; }
+  .tbl-row:hover { background: rgba(30,41,59,.45); }
+
+  /* Search result card */
+  .sr-card { background: rgba(11,17,32,.7); border: 1px solid rgba(51,65,85,.4); border-radius: 10px; transition: border-color .15s; cursor: pointer; }
+  .sr-card:hover { border-color: rgba(16,185,129,.25); }
+
+  /* Scrollbar */
+  .sb::-webkit-scrollbar { width: 4px; height: 4px; }
+  .sb::-webkit-scrollbar-track { background: transparent; }
+  .sb::-webkit-scrollbar-thumb { background: rgba(51,65,85,.5); border-radius: 2px; }
+
+  input { outline: none; background: transparent; }
+  input::placeholder { color: #475569; }
+  select { outline: none; }
+
+  .section-bar { width: 3px; height: 15px; border-radius: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body class="p-5" x-data="dashboard()" x-init="init()" @keydown.window="handleKey($event)">
+<div class="max-w-7xl mx-auto">
+
+  <!-- ── HEADER ─────────────────────────────── -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="dot dot-green"></div>
+        <span class="text-xl font-semibold tracking-tight">AI Hub</span>
+      </div>
+      <div class="badge badge-g">
+        <span class="mono" x-text="overallScore + '%'"></span>
+        <span class="ml-1 opacity-60 font-normal" style="font-family:Inter;">健康</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2.5">
+      <button @click="focusSearch()"
+        class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all"
+        style="background:rgba(17,24,39,.9);border:1px solid rgba(51,65,85,.6);color:#94A3B8;">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <span>搜索</span>
+        <kbd class="mono text-xs px-1.5 rounded" style="background:rgba(51,65,85,.4);color:#64748B;border:1px solid rgba(51,65,85,.5);">⌘K</kbd>
+      </button>
+      <span class="mono text-xs" style="color:#475569;" x-text="lastUpdated"></span>
+      <button @click="refresh()" class="p-1.5 rounded-lg transition-colors" style="color:#475569;"
+        :class="loading ? 'animate-spin' : 'hover:text-emerald-400'">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── METRIC CARDS ───────────────────────── -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <template x-for="svc in services" :key="svc.name">
+      <div class="card metric-card p-4"
+           :class="svc.status==='up' ? (healthScore(svc)>=80 ? 'cap-green' : 'cap-amber') : 'cap-red'">
+
+        <!-- Name + status -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <div class="dot" :class="svc.status==='up' ? (healthScore(svc)>=80 ? 'dot-green':'dot-amber') : 'dot-red'"></div>
+            <span class="text-sm font-medium capitalize" style="color:#CBD5E1;" x-text="svc.name"></span>
+          </div>
+          <span class="badge" :class="svc.status==='up'?'badge-g':'badge-r'" x-text="svc.status.toUpperCase()"></span>
+        </div>
+
+        <!-- Health % -->
+        <div class="mb-3">
+          <div class="mono font-semibold" style="font-size:2rem;line-height:1;letter-spacing:-.03em;"
+               :style="'color:'+gaugeColor(healthScore(svc))"
+               x-text="healthScore(svc)+'%'"></div>
+          <div class="text-xs mt-0.5" style="color:#475569;">健康度</div>
+        </div>
+
+        <!-- Latency -->
+        <div class="mb-3" x-show="svc.status==='up'">
+          <div class="flex justify-between mb-1">
+            <span class="text-xs" style="color:#475569;">延迟</span>
+            <span class="mono text-xs font-medium"
+                  :style="'color:'+(svc.latency_ms<200?'#10B981':svc.latency_ms<600?'#F59E0B':'#EF4444')"
+                  x-text="svc.latency_ms+'ms'"></span>
+          </div>
+          <div class="lat-track">
+            <div class="lat-fill"
+                 :style="'width:'+latencyBarWidth(svc.latency_ms)+'%;background:'+(svc.latency_ms<200?'#10B981':svc.latency_ms<600?'#F59E0B':'#EF4444')"></div>
+          </div>
+        </div>
+
+        <!-- Key metric -->
+        <div class="pt-2.5" style="border-top:1px solid rgba(51,65,85,.4);">
+          <template x-if="svc.name==='rag'">
+            <div class="flex items-center gap-1.5">
+              <span style="color:#475569;font-size:11px;">文档</span>
+              <span class="mono text-sm font-semibold" style="color:#94A3B8;" x-text="svc.docs_count||0"></span>
+            </div>
+          </template>
+          <template x-if="svc.name==='context'">
+            <div class="flex items-center gap-1.5">
+              <span style="color:#475569;font-size:11px;">条目</span>
+              <span class="mono text-sm font-semibold" style="color:#94A3B8;" x-text="svc.entries_count||0"></span>
+            </div>
+          </template>
+          <template x-if="svc.name==='ollama'">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span style="color:#475569;font-size:11px;">模型</span>
+                <span class="mono text-sm font-semibold" style="color:#94A3B8;" x-text="svc.model_count||0"></span>
+              </div>
+              <div x-show="svc.running>0" class="flex items-center gap-1">
+                <div class="dot" style="width:6px;height:6px;background:#10B981;animation:pg 1.5s ease-in-out infinite;"></div>
+                <span style="color:#10B981;font-size:11px;" x-text="svc.running+' 在线'"></span>
+              </div>
+            </div>
+          </template>
+          <template x-if="svc.name==='openclaw'">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm">🦾</span>
+              <span style="color:#94A3B8;font-size:11px;" x-text="svc.status==='up'?'在线运行':svc.detail"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- ── MIDDLE: SEARCH + TIMELINE ─────────── -->
+  <div class="grid md:grid-cols-5 gap-3 mb-4">
+
+    <!-- Search 3/5 -->
+    <div class="md:col-span-3 card p-4">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="section-bar" style="background:linear-gradient(to bottom,#10B981,#059669);"></div>
+        <h2 class="text-sm font-semibold" style="color:#CBD5E1;">知识库搜索</h2>
+      </div>
+
+      <!-- Command bar -->
+      <div class="cmd-bar flex items-center gap-3 px-4 py-3 mb-2">
+        <svg class="w-4 h-4 flex-shrink-0" style="color:#475569;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input x-ref="searchInput" x-model="searchQuery"
+               @keyup.enter="doSearch()" @keydown.escape="searchQuery='';searchResults=[];searched=false;searchCategory=''"
+               class="flex-1 text-sm" style="color:#E2E8F0;" placeholder="搜索 Obsidian 知识库…">
+        <kbd class="mono text-xs px-1.5 py-0.5 rounded flex-shrink-0" style="background:rgba(51,65,85,.4);color:#64748B;border:1px solid rgba(51,65,85,.5);">↵</kbd>
+      </div>
+      <!-- Category filter -->
+      <div class="flex flex-wrap gap-1.5 mb-2.5 px-1">
+        <template x-for="cat in [{v:'',l:'全部'},{v:'ex2026',l:'EX2026'},{v:'openclaw',l:'OpenClaw'},{v:'skills',l:'Skills'},{v:'nas',l:'NAS'},{v:'radar',l:'雷达'},{v:'tech-note',l:'技术笔记'}]" :key="cat.v">
+          <button @click="searchCategory=cat.v; if(searched) doSearch()"
+            class="chip" :class="searchCategory===cat.v ? 'border-emerald-500 text-emerald-400' : ''"
+            x-text="cat.l"></button>
+        </template>
+      </div>
+
+      <!-- Recent tags -->
+      <div class="flex flex-wrap gap-1.5 mb-3" x-show="!searched">
+        <span class="text-xs mr-1" style="color:#475569;">热门:</span>
+        <template x-for="tag in recentTags" :key="tag">
+          <button @click="searchQuery=tag;doSearch()" class="chip" x-text="'# '+tag"></button>
+        </template>
+      </div>
+
+      <!-- Result count -->
+      <div x-show="searched && searchResults.length>0" class="flex items-center gap-2 mb-2">
+        <span class="text-xs" style="color:#475569;" x-text="'找到 '+searchResults.length+' 条结果'"></span>
+      </div>
+
+      <!-- Results -->
+      <div class="space-y-2.5 max-h-72 overflow-y-auto sb">
+        <template x-for="(r, idx) in searchResults" :key="r.path">
+          <div class="sr-card p-3.5">
+            <!-- Row 1: title + category + score -->
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="mono text-xs flex-shrink-0" style="color:#475569;" x-text="'#'+(idx+1)"></span>
+              <span class="text-sm font-medium truncate" style="color:#60A5FA;" x-text="r.title"></span>
+              <span class="ml-auto flex-shrink-0 chip" style="margin:0;" x-text="r.category||'doc'"></span>
+            </div>
+            <!-- Row 2: path -->
+            <div class="text-xs mb-1.5 truncate" style="color:#475569;font-family:'JetBrains Mono',monospace;" x-text="r.path"></div>
+            <!-- Row 3: relevance bar -->
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs flex-shrink-0" style="color:#475569;">相关度</span>
+              <div class="flex-1 lat-track">
+                <div class="lat-fill" :style="'width:'+Math.round((r.score||0)*100)+'%;background:'+(r.score>=0.6?'#10B981':r.score>=0.4?'#F59E0B':'#64748B')"></div>
+              </div>
+              <span class="mono text-xs flex-shrink-0" :style="'color:'+(r.score>=0.6?'#10B981':r.score>=0.4?'#F59E0B':'#64748B')" x-text="Math.round((r.score||0)*100)+'%'"></span>
+            </div>
+            <!-- Row 4: tags -->
+            <div class="flex flex-wrap gap-1 mb-2" x-show="r.tags && r.tags.length">
+              <template x-for="tag in (Array.isArray(r.tags)?r.tags:[])" :key="tag">
+                <span class="chip" style="font-size:10px;padding:1px 6px;" x-text="tag"></span>
+              </template>
+            </div>
+            <!-- Row 5: snippet -->
+            <div class="text-xs leading-relaxed" style="color:#94A3B8;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;" x-text="r.snippet"></div>
+          </div>
+        </template>
+        <div x-show="searched && searchResults.length===0" class="text-center py-8">
+          <div class="text-2xl mb-2">🔍</div>
+          <div class="text-sm" style="color:#475569;">无匹配结果</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline 2/5 -->
+    <div class="md:col-span-2 card p-4">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="section-bar" style="background:linear-gradient(to bottom,#3B82F6,#8B5CF6);"></div>
+        <h2 class="text-sm font-semibold" style="color:#CBD5E1;">Agent 动态</h2>
+        <div class="ml-auto badge badge-b mono" x-text="feedEntries.length+' 条'"></div>
+      </div>
+
+      <div class="max-h-64 overflow-y-auto sb pr-1">
+        <template x-for="entry in feedEntries" :key="entry.id">
+          <div class="tl-item">
+            <!-- dot -->
+            <div class="absolute left-0 top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                 style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);">
+              <div style="width:5px;height:5px;border-radius:50%;background:#3B82F6;"></div>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="badge badge-g" x-text="entry.source"></span>
+              <span class="mono text-xs" style="color:#475569;" x-text="(entry.created_at||'').slice(5,16)"></span>
+            </div>
+            <div class="text-xs leading-relaxed"
+                 style="color:#64748B;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;"
+                 x-text="entry.content"></div>
+          </div>
+        </template>
+        <div x-show="feedEntries.length===0" class="text-center py-10">
+          <div class="text-sm" style="color:#475569;">暂无动态</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOTTOM: LOG TABLE ───────────────────── -->
+  <div class="card p-4">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <div class="section-bar" style="background:linear-gradient(to bottom,#F59E0B,#EF4444);"></div>
+        <h2 class="text-sm font-semibold" style="color:#CBD5E1;">查询日志</h2>
+      </div>
+      <div class="flex items-center gap-2">
+        <select x-model="methodFilter" class="text-xs px-2 py-1 rounded-lg"
+                style="background:rgba(11,17,32,.8);border:1px solid rgba(51,65,85,.6);color:#94A3B8;">
+          <option value="">全部方法</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+        </select>
+        <span class="mono text-xs" style="color:#475569;" x-text="filteredLogs.length+'条'"></span>
+      </div>
+    </div>
+
+    <div class="rounded-xl overflow-hidden" style="border:1px solid rgba(51,65,85,.45);">
+      <!-- Header -->
+      <div class="grid px-4 py-2.5 text-xs font-medium"
+           style="grid-template-columns:150px 130px 55px 1fr 60px;background:rgba(11,17,32,.85);color:#475569;border-bottom:1px solid rgba(51,65,85,.4);">
+        <div>时间</div>
+        <div>IP</div>
+        <div>方法</div>
+        <div>路径</div>
+        <div class="text-right">状态</div>
+      </div>
+      <!-- Rows -->
+      <div class="max-h-44 overflow-y-auto sb">
+        <template x-for="(entry, i) in filteredLogs" :key="i">
+          <div class="tbl-row grid px-4 py-2.5 items-center text-xs"
+               style="grid-template-columns:150px 130px 55px 1fr 60px;border-bottom:1px solid rgba(51,65,85,.18);">
+            <div class="mono" style="color:#64748B;" x-text="(entry.ts||'').slice(5,19).replace('T',' ')"></div>
+            <div class="mono" style="color:#475569;" x-text="entry.ip"></div>
+            <div>
+              <span class="badge" :class="entry.method==='POST'?'badge-b':'badge-g'" x-text="entry.method"></span>
+            </div>
+            <div class="mono" style="color:#94A3B8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="entry.path" x-text="entry.path"></div>
+            <div class="text-right">
+              <span class="badge"
+                :class="entry.status>=500?'badge-r':entry.status>=400?'badge-a':'badge-g'"
+                x-text="entry.status"></span>
+            </div>
+          </div>
+        </template>
+        <div x-show="filteredLogs.length===0" class="text-center py-6">
+          <div class="text-sm" style="color:#475569;">暂无记录</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function dashboard() {
+  return {
+    services: [], searchQuery: '', searchResults: [],
+    searched: false, feedEntries: [], auditLogs: [], methodFilter: '',
+    lastUpdated: '', overallScore: 0, loading: false, searchCategory: '',
+    recentTags: ['EX2026 战略', 'OpenClaw', 'NAS 环境', '全球雷达', '机器人', 'Skills'],
+
+    get filteredLogs() {
+      return this.methodFilter ? this.auditLogs.filter(e => e.method === this.methodFilter) : this.auditLogs;
+    },
+
+    async init() {
+      await this.refresh();
+      setInterval(() => this.refresh(), 30000);
+    },
+
+    async refresh() {
+      this.loading = true;
+      try {
+        const [status, feed, audit] = await Promise.all([
+          fetch('/api/status').then(r => r.json()),
+          fetch('/api/feed').then(r => r.json()),
+          fetch('/api/audit?n=100').then(r => r.json()),
+        ]);
+        this.services = status.services || [];
+        this.feedEntries = (feed.entries || []).slice(0, 20);
+        this.auditLogs = (audit.entries || []).slice(0, 100);
+        this.lastUpdated = new Date().toLocaleTimeString('zh-CN');
+        const scores = this.services.map(s => this.healthScore(s));
+        this.overallScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : 0;
+      } catch(e) { console.error(e); }
+      finally { this.loading = false; }
+    },
+
+    healthScore(svc) {
+      if (svc.status === 'down') return 0;
+      const ms = svc.latency_ms || 0;
+      if (ms < 100)  return 100;
+      if (ms < 200)  return 92;
+      if (ms < 400)  return 80;
+      if (ms < 700)  return 65;
+      if (ms < 1200) return 45;
+      if (ms < 2000) return 28;
+      return 15;
+    },
+
+    gaugeColor(score) {
+      if (score >= 80) return '#10B981';
+      if (score >= 50) return '#F59E0B';
+      if (score >= 20) return '#F97316';
+      return '#EF4444';
+    },
+
+    latencyBarWidth(ms) {
+      if (!ms) return 0;
+      return Math.max(5, Math.min(100, Math.round(100 - (ms / 1500) * 80)));
+    },
+
+    focusSearch() {
+      this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+    },
+
+    handleKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        this.focusSearch();
+      }
+    },
+
+    async doSearch() {
+      if (!this.searchQuery.trim()) return;
+      this.searched = true;
+      try {
+        let url = '/api/search?q=' + encodeURIComponent(this.searchQuery) + '&top_k=10';
+        if (this.searchCategory) url += '&category=' + encodeURIComponent(this.searchCategory);
+        const r = await fetch(url).then(r => r.json());
+        this.searchResults = r.results || [];
+      } catch(e) { this.searchResults = []; }
+    }
+  }
+}
+</script>
+</body>
+</html>
