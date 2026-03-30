@@ -1,5 +1,7 @@
 # obsidian-ai-stack
 
+[English](#obsidian-ai-stack) | [中文](#中文介绍)
+
 **Self-hosted AI knowledge base pipeline built around Obsidian — runs entirely on local hardware (NAS + GPU), zero cloud cost.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -194,6 +196,10 @@ This project was inspired by / borrows concepts from:
 MIT — see [LICENSE](LICENSE).
 
 ---
+
+---
+
+[↑ Back to English](#obsidian-ai-stack)
 
 ## 中文介绍
 
